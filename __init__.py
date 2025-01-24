@@ -1,57 +1,42 @@
-import json
-from products import Product, get_product
-from cart import dao
+from products import dao
 
 
-class Cart:
-    def __init__(self, id: int, username: str, contents: list[Product], cost: float):
+class Product:
+    def _init_(self, id: int, name: str, description: str, cost: float, qty: int = 0):
         self.id = id
-        self.username = username
-        self.contents = contents
+        self.name = name
+        self.description = description
         self.cost = cost
+        self.qty = qty
 
     @staticmethod
     def load(data):
-        return Cart(data['id'], data['username'], data['contents'], data['cost'])
+        return Product(data['id'], data['name'], data['description'], data['cost'], data['qty'])
 
 
-def get_cart(username: str) -> list[Product]:
-    """
-    Retrieve the user's cart details and return a list of Product objects.
-    """
-    cart_details = dao.get_cart(username)
-    if not cart_details:
-        return []
-
-    items = []
-    for cart_detail in cart_details:
-        # Assuming 'contents' is always valid JSON
-        contents = json.loads(cart_detail['contents'])
-        for product_id in contents:
-            product = get_product(product_id)
-            if product:
-                items.append(product)
-
-    return items
+def list_products() -> list[Product]:
+    # Fetch all products in one go and load them using a list comprehension
+    products = dao.list_products()
+    return [Product.load(product) for product in products]
 
 
-def add_to_cart(username: str, product_id: int):
-    """
-    Add a product to the user's cart.
-    """
-    dao.add_to_cart(username, product_id)
+def get_product(product_id: int) -> Product:
+    # Fetch the product and directly load it
+    product_data = dao.get_product(product_id)
+    if not product_data:
+        raise ValueError(f"Product with id {product_id} not found")
+    return Product.load(product_data)
 
 
-def remove_from_cart(username: str, product_id: int):
-    """
-    Remove a product from the user's cart.
-    """
-    dao.remove_from_cart(username, product_id)
+def add_product(product: dict):
+    # Perform lightweight validation here if needed
+    if 'id' not in product or 'name' not in product:
+        raise ValueError("Product must contain at least 'id' and 'name'")
+    dao.add_product(product)
 
 
-def delete_cart(username: str):
-    """
-    Delete the user's cart.
-    """
-    dao.delete_cart(username)
-
+def update_qty(product_id: int, qty: int):
+    if qty < 0:
+        raise ValueError("Quantity cannot be negative")
+    # Directly update the quantity in the database
+    dao.update_qty(product_id, qty)
